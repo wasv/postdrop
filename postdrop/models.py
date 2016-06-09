@@ -14,12 +14,14 @@ tag_map = Table('tag_map',
                 Column('note_id', Integer, ForeignKey('notes.id'))
                 )
 
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     username = Column(String(16), unique=True)
     otp_secret = Column(String(16))
     primary_key = Column(String(16))
+    notes = relationship('Note', backref='owner', lazy='dynamic')
 
     def generate_primary_key(self):
         self.primary_key = base64.b32encode(os.urandom(10)).decode('utf-8')
@@ -33,15 +35,25 @@ class User(Base):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
-class Notes(Base):
+
+class Note(Base):
     __tablename__ = 'notes'
     id = Column(Integer, primary_key=True)
-    text = Column(Text(), unique=True)
+    title = Column(String(64))
+    text = Column(Text())
     private = Column(Boolean)
+    owner_id = Column(Integer, ForeignKey('users.id'))
     tags = relationship('Tag', secondary=tag_map,
-                        backref=backref('photos', lazy='dynamic'))
+                        backref=backref('notes', lazy='dynamic'))
+
+    def __repr__(self):
+        return '<Note %r>' % (self.title)
+
 
 class Tag(Base):
     __tablename__ = 'tags'
     id = Column(Integer, primary_key=True)
     name = Column(String(32), unique=True)
+
+    def __repr__(self):
+        return '<Tag %r>' % (self.name)
