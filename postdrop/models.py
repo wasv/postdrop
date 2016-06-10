@@ -1,7 +1,7 @@
 import base64
 import os
 import onetimepass as otp
-from util import md5
+import util
 from sqlalchemy import Column, Integer, String, Boolean, Text, Table, ForeignKey
 
 from sqlalchemy.orm import relationship, backref
@@ -30,7 +30,7 @@ class User(Base):
         self.otp_secret  = base64.b32encode(os.urandom(10)).decode('utf-8')
 
     def verify_auth_key(self, auth_key):
-        return auth_key == md5(self.primary_key + str(otp.get_totp(secret=self.otp_secret)))
+        return auth_key == util.md5(self.primary_key + str(otp.get_totp(secret=self.otp_secret)))
 
     def __repr__(self):
         return '<User %r>' % (self.username)
@@ -45,6 +45,14 @@ class Note(Base):
     owner_id = Column(Integer, ForeignKey('users.id'))
     tags = relationship('Tag', secondary=tag_map,
                         backref=backref('notes', lazy='dynamic'))
+
+    @staticmethod
+    def fromshorturl(shorturl):
+        return util.uncantor(util.shorturl2id(shorturl))
+
+
+    def shorturl(self):
+        return util.id2shorturl(util.cantor(self.id, self.owner_id))
 
     def __repr__(self):
         return '<Note %r>' % (self.title)
