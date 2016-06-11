@@ -20,7 +20,15 @@ def note(shorturl):
     note_id, user_id = Note.fromshorturl(shorturl)
     note = Note.query.filter_by(id=note_id, owner_id=user_id).first()
     if note is not None:
-        return jsonify({'title':note.title,'text':note.text,'owner':note.owner.username})
+        tags = list()
+        for tag in note.tags:
+            tags.append(tag.name)
+        return jsonify({
+            'title': note.title,
+            'text': note.text,
+            'owner': note.owner.username,
+            'tags': tags
+        })
     else:
         return "No such note.", 404
 
@@ -34,9 +42,32 @@ def new_note():
 
         title = request.json['title']
         text = request.json['text']
-        note = Note(title=title,text=text,owner=owner)
+        note = Note(title=title, text=text, owner=owner)
+        for name in request.json['tags']:
+            tag = Tag.query.filter_by(name=name).first()
+            if tag is None:
+                tag = Tag(name=name)
+                db.add(tag)
+            note.tags.append(tag)
+
         db.add(note)
         db.commit()
         return note.shorturl()
     else:
         return "Not implemented."
+
+@app.route('/tags/<name>')
+def search_tag(name):
+    tag = Tag.query.filter_by(name=name).first()
+    notes = list()
+    for note in Note.query.filter(Note.tags.contains(tag)).all():
+        tags = list()
+        for tag in note.tags:
+            tags.append(tag.name)
+        notes.append({
+            'title': note.title,
+            'text': note.text,
+            'owner': note.owner.username,
+            'tags': tags
+        })
+    return jsonify({'notes':notes})
