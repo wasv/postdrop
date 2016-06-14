@@ -48,6 +48,7 @@ def delete_note(shorturl):
         auth = request.json['auth']
         if not owner.verify_auth_key(auth): return 'Bad Auth', 403
         Note.query.filter_by(id=note_id, owner_id=user_id).delete()
+        db.commit()
         return "Successful"
     else:
         return "Not implemented."
