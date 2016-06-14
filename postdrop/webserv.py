@@ -15,11 +15,19 @@ app.secret_key = os.urandom(24)  # TODO: Change to static value in production!
 def index():
     return "Not implemented."
 
-@app.route('/note/<shorturl>')
+@app.route('/note/<shorturl>', methods=['GET','POST'])
 def view_note(shorturl):
     note_id, user_id = Note.fromshorturl(shorturl)
     note = Note.query.filter_by(id=note_id, owner_id=user_id).first()
     if note is not None:
+        if note.private:
+            if request.method != 'POST':
+                return 'Bad Auth', 403
+            if 'auth' not in request.json:
+                return 'Bad Auth', 403
+            auth = request.json['auth']
+            owner = User.query.filter_by(id=user_id).first()
+            if not owner.verify_auth_key(auth): return 'Bad Auth', 403
         tags = list()
         for tag in note.tags:
             tags.append(tag.name)
@@ -57,6 +65,8 @@ def edit_note(shorturl):
             note.title = request.json['title']
         if 'text' in request.json:
             note.text = request.json['text']
+        if 'private' in request.json:
+            note.private = request.json['private']
         if 'tags' in request.json:
             for name in request.json['tags']:
                 tag = Tag.query.filter_by(name=name).first()
@@ -87,6 +97,8 @@ def new_note():
         note = Note(title=title, owner=owner)
         if 'text' in request.json:
             note.text = request.json['text']
+        if 'private' in request.json:
+            note.private = request.json['private']
         for name in request.json['tags']:
             tag = Tag.query.filter_by(name=name).first()
             if tag is None:
@@ -105,6 +117,24 @@ def search_tag(name):
     tag = Tag.query.filter_by(name=name).first()
     notes = list()
     for note in Note.query.filter(Note.tags.contains(tag)).all():
+        if note.private: continue
+        tags = list()
+        for tag in note.tags:
+            tags.append(tag.name)
+        notes.append({
+            'title': note.title,
+            'text': note.text,
+            'owner': note.owner.username,
+            'shorturl': note.shorturl(),
+            'tags': tags
+        })
+    return jsonify({'notes':notes})
+
+@app.route('/note/')
+def all_notes():
+    notes = list()
+    for note in Note.query.all():
+        if note.private: continue
         tags = list()
         for tag in note.tags:
             tags.append(tag.name)
