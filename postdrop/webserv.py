@@ -100,12 +100,13 @@ def new_note():
             note.text = request.json['text']
         if 'private' in request.json:
             note.private = request.json['private']
-        for name in request.json['tags']:
-            tag = Tag.query.filter_by(name=name).first()
-            if tag is None:
-                tag = Tag(name=name)
-                db.add(tag)
-            note.tags.append(tag)
+        if 'tags' in request.json:
+            for name in request.json['tags']:
+                tag = Tag.query.filter_by(name=name).first()
+                if tag is None:
+                    tag = Tag(name=name)
+                    db.add(tag)
+                note.tags.append(tag)
 
         db.add(note)
         db.commit()
